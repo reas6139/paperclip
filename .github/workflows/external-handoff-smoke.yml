@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Check importer and run fail-closed HTTP unit tests
         run: |
           node --check scripts/external-handoff/import.mjs
