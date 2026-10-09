@@ -105,7 +105,7 @@ export async function importHandoff({manifest, apiOrigin, companyId, apiKey, app
       const url=`${issueUrl}?limit=100&offset=${offset}`;
       const rows=await request(url,"GET");
       if(!Array.isArray(rows)) throw Error("PAPERCLIP_ISSUE_LIST_INVALID");
-      matches.push(...rows.filter(issue=>typeof issue?.description==="string" && issue.description.includes(MARKER(task.id))));
+      matches.push(...rows.filter(issue=>typeof issue?.description==="string" && issue.description.split("\n").includes(MARKER(task.id))));
       if(rows.length<100) break;
       if(pages===19) throw Error("PAPERCLIP_ISSUE_LIST_TOO_LARGE");
     }
