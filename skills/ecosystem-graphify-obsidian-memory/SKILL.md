@@ -70,6 +70,41 @@ Do not directly connect Railway agents to the owner's Windows filesystem through
 5. Respond with provenance and freshness labels; only use Paperclip's audited interfaces to update tasks.
 6. If access or a dependency fails, do not improvise a permission escalation or assert access.
 
+
+## Real Paperclip heartbeat proof: opt-in harness, not yet operational
+
+After the owner approves a real isolated agent runtime and the reviewed canary
+is mounted only in that specific company's agent environment, the bundled
+scripts/heartbeat-canary-proof.cjs performs this read-only check:
+
+1. Requires run-scoped PAPERCLIP_AGENT_ID, PAPERCLIP_COMPANY_ID,
+   PAPERCLIP_RUN_ID, PAPERCLIP_TASK_ID, PAPERCLIP_API_URL and PAPERCLIP_API_KEY.
+   Do not print or store the API key.
+2. Requests GET /api/agents/me from the configured Paperclip controller, using
+   the existing injected bearer token (4.5-second deadline; redirects rejected).
+   Validates agent ID and company ID against the wake-context environment.
+3. Invokes the bundled reader in cloud mode, which must verify the out-of-band
+   pinned manifest and every allowlisted note. Reads only the reviewed synthetic
+   canary and validates its expected marker.
+4. Emits one bounded JSON receipt with agent/company/run/task IDs, canary digest,
+   and manifest digest, but **explicitly sets**
+   paperclipRunOriginIndependentlyVerified=false and
+   externallyDurableReceipt=false. These properties MUST only be upgraded by
+   independent Paperclip server run-log evidence and a saved receipt, never by
+   this local tool itself.
+
+Live credentials and company-specific tenant isolation must be provided through
+Paperclip's existing legitimate agent runtime, not through prompts or public CI.
+Any cloud deployment, permissions, secrets, new resource/spend, or write to issue
+documents requires the normal separate owner release approval.
+
+Mock acceptance suite:
+node --test scripts/memory-readonly.test.cjs scripts/snapshot-packager.test.cjs scripts/heartbeat-canary-proof.test.cjs
+
+This fixture tests credential denial and scope rejection but **does not**
+establish that any Railway agent has actually run the skill, nor that memory is
+automatically synchronized.
+
 ## Testing and promotion
 
 Test: node --test scripts/memory-readonly.test.cjs
