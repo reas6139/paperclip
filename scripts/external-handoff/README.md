@@ -44,3 +44,9 @@ Do not treat `NODE_SERVER_HEALTHY`, a git commit, a manifest, a GitHub issue, an
 `node --test scripts/external-handoff/import.test.mjs`
 
 The tests use mock HTTP and confirm fail-closed import logic only. They **do not** substitute for testing against an authenticated native Paperclip instance.
+
+### Legacy queue quarantine
+
+At the latest read-only inventory the ecosystem had **164 waiting/queued sandbox tasks**, including **105 assigned to the retired Jarvis owner** (81 waiting, 24 queued). These are **not** authorized to be bulk-imported: many contain obsolete Jarvis management, previous failures, or unresolved approvals. Preserve source records, quarantine duplicates and stale tasks, and import only fresh, validated, owner-approved implementation briefs into Paperclip. The six-step manifest is takeover infrastructure, **not a claim that those 164 existing tasks have migrated**.
+
+The isolated importer smoke workflow uses **Node 24**, per Paperclip's repository policy. The broader CI can fail independently on upstream Docker Hub authentication or image retrieval outages, which are not successful deployment receipts.
