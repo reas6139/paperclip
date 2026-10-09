@@ -1,0 +1,36 @@
+name: External Paperclip Handoff Import Safety
+
+on:
+  push:
+    branches:
+      - feature/external-ecosystem-handoff-v1
+    paths:
+      - 'scripts/external-handoff/**'
+      - '.github/workflows/external-handoff-smoke.yml'
+  pull_request:
+    paths:
+      - 'scripts/external-handoff/**'
+      - '.github/workflows/external-handoff-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-handoff-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  isolated-node-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check importer and run fail-closed HTTP unit tests
+        run: |
+          node --check scripts/external-handoff/import.mjs
+          node --check scripts/external-handoff/import.test.mjs
+          node --test scripts/external-handoff/import.test.mjs
