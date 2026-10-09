@@ -33,3 +33,12 @@
 - Research reflects publicly described features, not direct performance benchmarks.
 - Preferred sequence: evaluate tool in sandbox => run deterministic smoke+negative-path tests => Paperclip-scoped credentials and runtime proof => documented owner approval for production integration => stage deployment + rollback => repeated actual task proof.
 - Never conflate ChatGPT plugin installation/availability with access in Paperclip, or local Obsidian note with cloud Paperclip-agent memory.
+
+## Owner decision — 2026-10-10: defer Blotato until a business needs publishing
+
+- **APPROVED STRATEGIC DECISION, NOT AN ACTIVATION:** Blotato is **not required for research now**. Do not create a Blotato account, start a trial/subscription, generate an API key, connect social profiles, or delegate paid publishing as a prerequisite for research.
+- **Current phase:** Paperclip may coordinate a bounded research pipeline using existing authorized web and social research tools (Firecrawl, Exa, Tavily and compliant public platform access), with source attribution. Do not claim these tools can access private or all platform content or personal Saved collections; add a separately authorized adapter only when needed.
+- **Per-business activation:** When an approved business actually needs owned accounts, create/authorize business-specific social accounts with owner approval, then connect them to Blotato as the publishing, scheduling, comment/DM and analytics layer, applying isolated account mapping and brand-level controls. Prefer one organization-level Blotato tenancy if account caps/permissions permit; do not assume one Blotato login per business is needed.
+- **Activation controls:** verify expected ROI, live platform support/account requirements, applicable pricing, posting caps, permission scopes, brand segregation, draft review, rollback/disconnect and approval for any payments and external posting. Blotato's official product page currently lists paid plans starting at $29/month and a trial; confirm current terms before purchase. Instagram business/professional status may be required for connection.
+- **Sources checked 2026-10-10:** https://www.blotato.com/ ; https://help.blotato.com/settings/social-accounts ; https://help.blotato.com/settings/social-accounts/instagram ; https://www.blotato.com/research/social-media-agent-pricing .
+- **Paperclip status:** Recorded in **non-production feature branch only**. This is not verified Paperclip-agent retrieval or an active integration. **No Jarvis-agent messaging.**
