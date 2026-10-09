@@ -33,6 +33,32 @@ The bridge has NO default owner-machine path. It does not copy data, connect to 
 
 Pass queries as argv using a proper process API, not interpolated into a shell. The bridge bounds output and note sizes, rejects traversal/symlink reads, and fails closed if its dependencies are unavailable. The graph query needs an independently installed compatible Graphify executable. Keep resource limits low.
 
+## Offline, allowlisted snapshot preparation
+
+The optional snapshot packager, scripts/snapshot-packager.cjs, accepts these explicit flags:
+- --vault ABSOLUTE_EXISTING_VAULT
+- --allowlist ABSOLUTE_REVIEWED_JSON
+- --out ABSOLUTE_UNUSED_STAGING_DIRECTORY
+- --apply (optional; without it the command is a dry run that writes nothing)
+
+Example allowlist (synthetic content, not private project memory):
+~~~json
+{"version":1,"notes":[{"scope":"root","name":"07 - Paperclip Memory Canary.md","shareClass":"synthetic","reviewed":true}]}
+~~~
+
+It rejects non-reviewed/internal notes, symlinks, traversal, suspicious credentials, destination overwrites, and staging inside the source vault. This scanning is heuristic, **not an assurance that any document is public or safe to transmit**. No files are uploaded or distributed by the packager. Output is a local candidate containing vault notes and manifest.json with SHA-256 hashes.
+
+When mounting a candidate in a separate authorized runtime:
+1. Independently review candidate contents and manifest; protect the manifest SHA-256 value in a trusted deployment configuration, separate from the untrusted snapshot.
+2. Set ECOSYSTEM_MEMORY_VAULT_DIR to the staged **vault/** directory.
+3. Set ECOSYSTEM_MEMORY_CLOUD_MODE=1 and ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256 to the independently pinned 64-character digest.
+4. The reader will **fail closed** without this pin, on changed notes, altered manifests, symlinks, unlisted Markdown files, or missing dependencies. A pin verifies integrity relative to the approved digest but does not provide transport encryption, runtime isolation, or owner authorization.
+5. For a Graphify query, the agent additionally requires an independently verified graph and compatible CLI in its own environment; the safe note-only candidate intentionally contains no graph.json.
+
+Test: node --test scripts/memory-readonly.test.cjs scripts/snapshot-packager.test.cjs
+
+Until the operator separately approves an encrypted, least-privilege, company-scoped distribution path, **keep all candidates local and unshared**.
+
 Do not directly connect Railway agents to the owner's Windows filesystem through a public tunnel or broad remote access. Remote snapshot distribution, access-control scope, encryption, approval and rollback require independent verification.
 
 ## Workflow in approved Paperclip tasks
