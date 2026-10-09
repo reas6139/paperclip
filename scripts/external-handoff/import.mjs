@@ -110,7 +110,14 @@ export async function importHandoff({manifest, apiOrigin, companyId, apiKey, app
       if(pages===19) throw Error("PAPERCLIP_ISSUE_LIST_TOO_LARGE");
     }
     if(matches.length>1) throw Error("PAPERCLIP_DUPLICATE_IMPORT_REQUIRES_REVIEW");
-    if(matches.length===1) { reused++; continue; }
+    if(matches.length===1) {
+      if (!UUID.test(String(matches[0].id ?? "")) || matches[0].title !== task.title ||
+          !["backlog","todo","in_progress","in_review","blocked","done"].includes(matches[0].status)) {
+        throw Error("PAPERCLIP_IMPORT_RECEIPT_CONFLICT");
+      }
+      reused++;
+      continue;
+    }
     const payload={title:task.title,description:renderDescription(task),status:"backlog",priority:task.priority <= 2 ? "high" : "medium"};
     const issued=await request(issueUrl,"POST",payload);
     if(!issued || !UUID.test(String(issued.id||"")) ||
