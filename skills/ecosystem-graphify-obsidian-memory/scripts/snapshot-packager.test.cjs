@@ -71,3 +71,17 @@ test('duplicate notes and empty allowlist rejected',()=>{
   save([synthetic,synthetic]);assert.equal(run().status,1);
   save([]);assert.equal(run().status,1);
 });
+
+test('packed allowlisted vault is readable by the separate bridge process without cloud access',()=>{
+  save([synthetic,publicNote]);const target=path.join(outRoot,'roundtrip');
+  assert.equal(run(['--out',target,'--apply']).status,0);
+  const bridge=path.join(__dirname,'memory-readonly.cjs');
+  const env={...process.env,ECOSYSTEM_MEMORY_VAULT_DIR:path.join(target,'vault'),ECOSYSTEM_MEMORY_GRAPH_FILE:'',ECOSYSTEM_MEMORY_SOURCE_REPO:''};
+  const invoke=(args)=>{const r=cp.spawnSync(process.execPath,[bridge,...args],{env,encoding:'utf8',timeout:5000});return {status:r.status,payload:JSON.parse(r.status===0?r.stdout:r.stderr)};};
+  const status=invoke(['status']);assert.equal(status.status,0);
+  assert.equal(status.payload.topLevelNotes,1);assert.equal(status.payload.graphNotes,1);
+  assert.equal(status.payload.cloudAgentAuthenticated,false);
+  assert.deepEqual(invoke(['search','exampleSymbol']).payload.graphMatches,['exampleSymbol.md']);
+  assert.match(invoke(['read-index','Project Goals.md']).payload.content,/safe dummy project/);
+  assert.equal(invoke(['query','architecture']).status,1);
+});
