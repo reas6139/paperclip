@@ -76,12 +76,40 @@ test('packed allowlisted vault is readable by the separate bridge process withou
   save([synthetic,publicNote]);const target=path.join(outRoot,'roundtrip');
   assert.equal(run(['--out',target,'--apply']).status,0);
   const bridge=path.join(__dirname,'memory-readonly.cjs');
-  const env={...process.env,ECOSYSTEM_MEMORY_VAULT_DIR:path.join(target,'vault'),ECOSYSTEM_MEMORY_GRAPH_FILE:'',ECOSYSTEM_MEMORY_SOURCE_REPO:''};
+  const pin=crypto.createHash('sha256').update(fs.readFileSync(path.join(target,'manifest.json'))).digest('hex');
+  const env={...process.env,ECOSYSTEM_MEMORY_VAULT_DIR:path.join(target,'vault'),ECOSYSTEM_MEMORY_GRAPH_FILE:'',ECOSYSTEM_MEMORY_SOURCE_REPO:'',ECOSYSTEM_MEMORY_CLOUD_MODE:'1',ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:pin};
   const invoke=(args)=>{const r=cp.spawnSync(process.execPath,[bridge,...args],{env,encoding:'utf8',timeout:5000});return {status:r.status,payload:JSON.parse(r.status===0?r.stdout:r.stderr)};};
   const status=invoke(['status']);assert.equal(status.status,0);
   assert.equal(status.payload.topLevelNotes,1);assert.equal(status.payload.graphNotes,1);
   assert.equal(status.payload.cloudAgentAuthenticated,false);
+  assert.equal(status.payload.snapshot.state,'pinned-content-verified');
   assert.deepEqual(invoke(['search','exampleSymbol']).payload.graphMatches,['exampleSymbol.md']);
   assert.match(invoke(['read-index','Project Goals.md']).payload.content,/safe dummy project/);
   assert.equal(invoke(['query','architecture']).status,1);
+});
+
+test('staged vault is blocked without out-of-band SHA pin, and tampering fails closed',()=>{
+  save([synthetic]);const target=path.join(outRoot,'tamper-case');
+  assert.equal(run(['--out',target,'--apply']).status,0);
+  const bridge=path.join(__dirname,'memory-readonly.cjs'),snapshot=path.join(target,'vault');
+  const base={...process.env,ECOSYSTEM_MEMORY_VAULT_DIR:snapshot,ECOSYSTEM_MEMORY_GRAPH_FILE:'',ECOSYSTEM_MEMORY_CLOUD_MODE:'1'};
+  const invoke=(env)=>cp.spawnSync(process.execPath,[bridge,'status'],{env:{...base,...env},encoding:'utf8',timeout:4000});
+  assert.notEqual(invoke({ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:''}).status,0);
+  const pin=crypto.createHash('sha256').update(fs.readFileSync(path.join(target,'manifest.json'))).digest('hex');
+  assert.equal(invoke({ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:pin}).status,0);
+  assert.notEqual(invoke({ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:'0'.repeat(64)}).status,0);
+  fs.appendFileSync(path.join(snapshot,'Project Goals.md'),'\nTampered');
+  assert.notEqual(invoke({ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:pin}).status,0);
+});
+test('unreviewed extra Markdown content makes pinned snapshot unavailable',()=>{
+  save([synthetic]);const target=path.join(outRoot,'extra-case');
+  assert.equal(run(['--out',target,'--apply']).status,0);
+  const pin=crypto.createHash('sha256').update(fs.readFileSync(path.join(target,'manifest.json'))).digest('hex');
+  fs.writeFileSync(path.join(target,'vault','unreviewed.md'),'# unexpected');
+  const bridge=path.join(__dirname,'memory-readonly.cjs');
+  const r=cp.spawnSync(process.execPath,[bridge,'list'],{encoding:'utf8',timeout:4000,env:{
+    ...process.env,ECOSYSTEM_MEMORY_VAULT_DIR:path.join(target,'vault'),
+    ECOSYSTEM_MEMORY_CLOUD_MODE:'1',ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256:pin
+  }});
+  assert.notEqual(r.status,0);
 });
