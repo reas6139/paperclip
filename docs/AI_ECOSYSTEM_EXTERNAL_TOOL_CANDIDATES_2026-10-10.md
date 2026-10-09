@@ -21,7 +21,7 @@
 | cto.new | https://cto.new/agents — standalone hosted AI teams. | LOW: parallel agent marketplace duplicates Paperclip; no additional orchestration account or agent activation by default. |
 | Amboras ecom | https://www.amboras.com/ — competing AI-native ecommerce platform, YC page https://www.ycombinator.com/companies/amboras. | RESEARCH ONLY: benchmark versus current Shopify path; no storefront migration, payments integration or subscription. |
 | Vercel skill discovery | https://github.com/vercel-labs/skills ; `find-skills` at same repo; CLI `npx skills add vercel-labs/skills@find-skills`. | HIGH EVALUATION: skill discovery/catalogue for candidate agent; never auto-install arbitrary skills into production. Inspect SKILL.md and pin versions. |
-| Agent Reach | https://github.com/Panniantong/Agent-Reach — multi-platform reading/installation framework with `agent-reach doctor` and safe-mode; as of review Instagram/TikTok support is not established (open request: https://github.com/Panniantong/Agent-Reach/issues/384). | CONDITIONAL: prefer existing web research connectors, evaluate read-only isolated social research, no cookie/session copying or social posting bypass; don't claim Instagram Saved collection access. |
+| Agent Reach | https://github.com/Panniantong/Agent-Reach — multi-platform reading/installation framework with `agent-reach doctor`. **Correction verified 2026-10-10:** upstream README already describes desktop-only Instagram/Facebook research via OpenCLI using an existing Chrome login; this is not a headless/cloud Paperclip route and does not imply TikTok support. | CONDITIONAL: optional local-only research, not preferred for always-on Paperclip; no cookie export/session copying, no social posting bypass, and don't claim Instagram Saved collection access. |
 
 ## Owner-only steps, strictly when useful
 1. **Wispr Flow** — **owner setup completed for ChatGPT** (verified 2026-10-10). No action required now. A future Paperclip adapter would need separate scoped access/approval and a harmless end-to-end task extraction test before calling it integrated. Dictation app alone is not an autonomous task system.
@@ -42,3 +42,30 @@
 - **Activation controls:** verify expected ROI, live platform support/account requirements, applicable pricing, posting caps, permission scopes, brand segregation, draft review, rollback/disconnect and approval for any payments and external posting. Blotato's official product page currently lists paid plans starting at $29/month and a trial; confirm current terms before purchase. Instagram business/professional status may be required for connection.
 - **Sources checked 2026-10-10:** https://www.blotato.com/ ; https://help.blotato.com/settings/social-accounts ; https://help.blotato.com/settings/social-accounts/instagram ; https://www.blotato.com/research/social-media-agent-pricing .
 - **Paperclip status:** Recorded in **non-production feature branch only**. This is not verified Paperclip-agent retrieval or an active integration. **No Jarvis-agent messaging.**
+
+## 2026-10-10 — Research-only social media access without Blotato
+
+**Decision: research-only candidate review and proposed Paperclip evaluation; NOT operational, no new paid account, credential access, remote MCP configuration or Jarvis-agent assignment.** Confirmed absence of a currently authenticated provider credential for this new service; do not infer from access in ChatGPT.
+
+### Preferred provider: ScrapeCreators public social data API
+- Product: https://scrapecreators.com/ ; documentation: https://docs.scrapecreators.com/ ; hosted MCP: https://api.scrapecreators.com/mcp ; setup instructions: https://docs.scrapecreators.com/integrations/mcp/ ; signup: https://app.scrapecreators.com/
+- Official site advertises 100 free credits, no card, no subscription, and public-data access for Instagram, TikTok, YouTube, Facebook, Reddit, X and more. Content varies by endpoint; no claim of private posts, Instagram Saved, unauthorized login access, or exhaustive coverage. No live API call has been tested.
+- Direct MCP connection requires one owner-approved account/API key or supported OAuth in the actual Paperclip agent runtime. User should not paste key into chat/repository/Obsidian; provision only through an approved scoped secret manager after security review.
+- Recommended minimal evaluation: (1) select harmless public Instagram profile and TikTok video/hashtag, (2) collect structured metadata through allowed read-only endpoints with <=10 credits total, (3) compare source URL/content/date/accuracy and result completeness independently, (4) persist cited normalized data only where owner-approved, (5) enforce zero auto-top-up and a hard per-run/request and per-month cap. No posting/DMs.
+- The presence of ScrapeCreators' MCP endpoint does NOT prove Paperclip runner can authenticate/transport remote MCP. Validate runtime support before connecting.
+- Cost/usage risk: advertised free credits are finite; caching/free-hit claims, plan conditions and terms must be checked at account registration, and third-party claims are not an operational SLA.
+
+### Fallback: Apify social Actors through Apify hosted MCP
+- MCP: https://mcp.apify.com ; docs: https://docs.apify.com/mcp ; pricing: https://apify.com/pricing ; social actors: https://apify.com/store/categories
+- Apify advertises $5 per month in free usage without a credit card, but actor-specific fees and compute can exhaust credits. Supports social research Actors for public Instagram posts/reels/hashtags/comments, TikTok search/profiles and more. Results depend on independently maintained Actors and source/platform accessibility. No live Actor run verified.
+- For isolated sandbox testing, allowlist only vetted read-only actors; configure explicit `maxTotalChargeUsd`, `maxItems`, `timeout` and `memory` per `call-actor`; no automatic usage overages, autonomous payment or production agent delegation.
+- Intended fallback for unsupported ScrapeCreators endpoints or custom scraping, not a duplicate automatic tool chain.
+
+### Existing alternatives and boundaries
+- Connected ChatGPT Firecrawl/Tavily/Exa: useful for broad public web research, but this does not provide Paperclip credentials or reliable social-platform metadata access.
+- Agent Reach upstream README now supports Instagram **through a logged-in desktop Chrome session and OpenCLI**, not as a verified headless cloud backend; TikTok remains not established. This is inappropriate as default cloud Paperclip integration, and on-device automated browser access must not be assumed or triggered.
+- YouTube official Data API is a possible platform-specific verified option, with application quotas and owner-controlled Google developer setup. Official social APIs may have eligibility/scope limitations.
+- Future Blotato remains separate and deferred to approved business social publishing, as decided above.
+
+### Owner intervention gate
+Owner action is only needed if actual provider credential provisioning is required: create a free ScrapeCreators account, authorize API/MCP access in the **Paperclip** execution environment once integration path and spending limits are reviewed. No social publishing account creation is needed for the read-only public research plan. **No implementation, deployment, paid usage or live Paperclip agent access is claimed.**
