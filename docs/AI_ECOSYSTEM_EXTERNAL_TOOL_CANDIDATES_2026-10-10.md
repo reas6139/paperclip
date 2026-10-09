@@ -69,3 +69,15 @@
 
 ### Owner intervention gate
 Owner action is only needed if actual provider credential provisioning is required: create a free ScrapeCreators account, authorize API/MCP access in the **Paperclip** execution environment once integration path and spending limits are reviewed. No social publishing account creation is needed for the read-only public research plan. **No implementation, deployment, paid usage or live Paperclip agent access is claimed.**
+
+## 2026-10-10 — Owner future-use links: UpsideOnly, FxFactory, Bloomberg Terminal
+
+**Status: REFERENCE LINKS SAVED ONLY.** Owner asked these names/sites be retained for potential later use. No registration, paid subscription, local installation, financial activity, business operations, API keys or Paperclip-agent invocation is authorized by this note.
+
+| Site | Verified official link | Future possible ecosystem use | Decision / caution |
+|---|---|---|---|
+| UpsideOnly | https://upsideonly.com/ ; https://upsideonly.com/faq/ ; https://upsideonly.com/terms/ | Market prediction, simulated trading and possible strategy/reward research. Platform says users paper-trade virtual balances and may receive payouts from selected profitable models / competitions. | **Research candidate only.** No claim payouts or selection are guaranteed. Verify payout eligibility, country restrictions, security deposits/financial terms, business ownership, privacy, and independent proof before registration or integration. No funds committed. |
+| FxFactory | https://fxfactory.com/ ; https://fxfactory.com/products/ | Mac-centric creative video effect plugins, transitions, graphics for Final Cut Pro, Motion, Adobe Premiere/After Effects and other supported editors; potentially useful for social media/video business workflows. | **Reference only.** Primarily Mac software; verify current platform/editor compatibility, licensing/costs, and whether it fits the actual production workflow before installing. Not a Paperclip autonomous media engine. |
+| Bloomberg Terminal | https://professional.bloomberg.com/products/bloomberg-terminal/ | Premium institutional market research, financial news, analytics and trading workflows. Potential future finance research benchmark. | **Reference / long-term evaluation.** Commercial subscription and licensing/entitlement restrictions; compare existing lower-cost legal data sources before considering purchase or any API access. No subscription or entitlement assumed. |
+
+**Owner intent:** remember sites for later consideration, not implement now. Paperclip is designated as future integration coordinator only after actual access and owner permission; local/chat-visible record != live agent retrieval. Sources checked 2026-10-10. No Jarvis agent notification.
