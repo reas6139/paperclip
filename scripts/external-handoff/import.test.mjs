@@ -40,8 +40,8 @@ test("native backlog import is unassigned and carries review gates",async()=>{
 test("repeat run does not duplicate issues already carrying exact receipt marker",async()=>{
  let posts=0;
  const fetcher=async(url,req)=>req.method==="GET" ? ok([
-  {description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-first-step"},
-  {description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-second-step"}
+  {id:"11111111-1111-4111-8111-111111111111",title:one.title,status:"backlog",description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-first-step"},
+  {id:"22222222-2222-4222-8222-222222222222",title:two.title,status:"todo",description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-second-step"}
  ]) : (posts++,ok({}));
  const r=await importHandoff({...opts,fetcher});
  assert.equal(r.created,0);assert.equal(r.reused,2);assert.equal(posts,0);
@@ -74,6 +74,28 @@ test("reject malformed, duplicated, cyclic, out-of-order, or unexpectedly large 
 test("malformed issue list or creation receipt cannot be counted as transfer",async()=>{
  await assert.rejects(()=>importHandoff({...opts,fetcher:async()=>ok({items:[]})}),/LIST_INVALID/);
  await assert.rejects(()=>importHandoff({...opts,fetcher:async(_u,r)=>r.method==="GET"?ok([]):ok({id:"not-a-uuid"})}),/CREATE_RECEIPT_INVALID/);
+});
+
+
+test("stale or forged import receipts fail closed instead of silently skipping work",async()=>{
+ for(const invalid of [
+  {id:"bad-id",title:one.title,status:"backlog"},
+  {id:COMPANY,title:"Unexpected privileged operation",status:"backlog"},
+  {id:COMPANY,title:one.title,status:"completed"},
+ ]) {
+   let posts=0;
+   const fetcher=async(_url,req)=>req.method==="GET" ? ok([{...invalid,description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-first-step"}]) : (posts++,ok({}));
+   await assert.rejects(()=>importHandoff({...opts,fetcher}),/IMPORT_RECEIPT_CONFLICT/);
+   assert.equal(posts,0);
+ }
+});
+
+test("duplicate markers fail closed without making new issues",async()=>{
+ let posts=0;
+ const duplicate={id:COMPANY,title:one.title,status:"backlog",description:"paperclip-handoff-key: paperclip-external-handoff-v1:external-first-step"};
+ const fetcher=async(_url,req)=>req.method==="GET" ? ok([duplicate,{...duplicate,id:"22222222-2222-4222-8222-222222222222"}]) : (posts++,ok({}));
+ await assert.rejects(()=>importHandoff({...opts,fetcher}),/DUPLICATE_IMPORT_REQUIRES_REVIEW/);
+ assert.equal(posts,0);
 });
 
 test("owner approval required for any apply and auth never echoes tokens",async()=>{
