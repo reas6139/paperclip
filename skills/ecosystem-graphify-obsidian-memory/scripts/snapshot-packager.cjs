@@ -48,12 +48,15 @@ try{
   const dest=path.join(parent,path.basename(out));if(dest!==path.resolve(out))throw Error('Output path must be direct child of existing directory');
   fs.mkdirSync(dest,{recursive:false,mode:0o700});
   try {
-    fs.mkdirSync(path.join(dest,'notes'));
+    const payload=path.join(dest,'vault');
+    fs.mkdirSync(payload);
+    fs.mkdirSync(path.join(payload,'01 - Graphify Code Map'));
     for(let i=0;i<entries.length;i++){
       const e=entries[i];
-      fs.writeFileSync(path.join(dest,'notes',String(i).padStart(4,'0')+'.md'),e.text,{flag:'wx',mode:0o600});
+      const relative=e.scope==='root'?e.name:path.join('01 - Graphify Code Map',e.name);
+      fs.writeFileSync(path.join(payload,relative),e.text,{flag:'wx',mode:0o600});
     }
-    const manifest={schema:'ecosystem-memory-snapshot-v1',status:'UNSHARED_LOCAL_CANDIDATE',sourceCommitVerified:false,items:summary.map((x,i)=>({...x,packedFile:'notes/'+String(i).padStart(4,'0')+'.md'})),shared:false,verifiedByCloudAgent:false};
+    const manifest={schema:'ecosystem-memory-snapshot-v1',status:'UNSHARED_LOCAL_CANDIDATE',sourceCommitVerified:false,items:summary.map(x=>({...x,packedFile:'vault/'+(x.scope==='root'?'':'01 - Graphify Code Map/')+x.name})),shared:false,verifiedByCloudAgent:false};
     fs.writeFileSync(path.join(dest,'manifest.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx',mode:0o600});
     process.stdout.write(JSON.stringify({ok:true,mode:'local-only-candidate',files:entries.length,manifest:dest,uploaded:false,shared:false})+'\n');
   }catch(e){fs.rmSync(dest,{recursive:true,force:true});throw e;}
