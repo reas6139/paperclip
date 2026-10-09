@@ -11,7 +11,7 @@ async function main(){
   if(!/^[a-f0-9]{64}$/i.test(env.ECOSYSTEM_MEMORY_EXPECTED_MANIFEST_SHA256))throw Error('INVALID_MANIFEST_PIN');
   const parsed=new URL(env.PAPERCLIP_API_URL);
   if(!['https:','http:'].includes(parsed.protocol)||parsed.username||parsed.password||parsed.hash||parsed.search)throw Error('INVALID_API_URL');
-  if(parsed.protocol==='http:' && !['localhost','127.0.0.1','::1'].includes(parsed.hostname) && !env.PAPERCLIP_INTERNAL_HTTP_TRUSTED)throw Error('UNTRUSTED_PLAINTEXT_API_URL');
+  if(parsed.protocol==='http:' && !['localhost','127.0.0.1','::1'].includes(parsed.hostname) && env.PAPERCLIP_INTERNAL_HTTP_TRUSTED!=='1')throw Error('UNTRUSTED_PLAINTEXT_API_URL');
   const controller=new URL('api/agents/me',parsed.href.replace(/\/+$/,'')+'/');
   const r=await fetch(controller,{method:'GET',headers:{Authorization:'Bearer '+env.PAPERCLIP_API_KEY,Accept:'application/json'},signal:AbortSignal.timeout(4500),redirect:'error'});
   if(r.status!==200)throw Error('PAPERCLIP_AGENT_AUTH_FAILED_'+r.status);
