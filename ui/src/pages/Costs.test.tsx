@@ -37,6 +37,9 @@ vi.mock("../api/budgets", () => ({
   },
 }));
 
+const agentsListMock = vi.hoisted(() => vi.fn());
+vi.mock("../api/agents", () => ({ agentsApi: { list: (...args: unknown[]) => agentsListMock(...args) } }));
+
 vi.mock("../api/costs", () => ({ costsApi: costsApiMocks }));
 vi.mock("../api/decision-models", () => ({ decisionModelsApi: { history: decisionHistoryMock } }));
 
@@ -64,6 +67,7 @@ describe("Shared Costs surfaces", () => {
 
   beforeEach(() => {
     decisionHistoryMock.mockResolvedValue([]);
+    agentsListMock.mockResolvedValue([]);
     costsApiMocks.byUser.mockResolvedValue({ activeUserCount: 1, rows: [] });
     container = document.createElement("div");
     document.body.appendChild(container);
@@ -359,4 +363,95 @@ describe("Shared Costs surfaces", () => {
     );
   });
 
+  describe("first budget policy creation", () => {
+    const orchestratorId = "04da77bd-a6cc-46dd-b4ea-430f5f6b7c50";
+    const agents = [
+      { id: "11111111-1111-4111-8111-111111111111", name: "Researcher", status: "idle" },
+      { id: orchestratorId, name: "Paperclip Orchestrator", status: "paused" },
+      { id: "22222222-2222-4222-8222-222222222222", name: "Retired", status: "terminated" },
+    ];
+
+    async function renderBudgets(path = "/") {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+      root = createRoot(container);
+      await act(async () => root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[path]}><Costs embedded initialTab="budgets" lockTab /></MemoryRouter>
+        </QueryClientProvider>,
+      ));
+      await act(async () => { await vi.waitFor(() => expect(container.querySelector('[aria-label="Budget scope"]')).not.toBeNull()); });
+      return queryClient;
+    }
+
+    function setAmount(value: string) {
+      const element = container.querySelector<HTMLInputElement>('[aria-label="Monthly budget (USD)"]')!;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(element, value);
+      element.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    const createButton = () => [...container.querySelectorAll("button")].find((b) => b.textContent === "Create budget policy")!;
+
+    it("creates the first agent policy from the agent's budgets link with a hard stop and unpriced usage blocked", async () => {
+      agentsListMock.mockResolvedValue(agents);
+      upsertPolicyMock.mockResolvedValue({});
+      const queryClient = await renderBudgets(`/activity/budgets?agentId=${orchestratorId}`);
+
+      const scope = container.querySelector<HTMLSelectElement>('[aria-label="Budget scope"]')!;
+      expect(scope.value).toBe(`agent:${orchestratorId}`);
+      expect([...scope.options].map((option) => option.textContent)).toEqual(["Organization", "Agent: Researcher", "Agent: Paperclip Orchestrator"]);
+      expect(container.textContent).toContain("A $0 budget turns enforcement off");
+
+      await act(async () => setAmount("0.01"));
+      await act(async () => createButton().click());
+      await act(async () => { await vi.waitFor(() => expect(upsertPolicyMock).toHaveBeenCalled()); });
+      expect(upsertPolicyMock).toHaveBeenCalledWith("company-1", {
+        scopeType: "agent", scopeId: orchestratorId, metric: "billed_cents", windowKind: "calendar_month_utc",
+        amount: 1, hardStopEnabled: true, unpricedUsagePolicy: "block",
+      });
+      expect(agentsListMock).toHaveBeenCalledWith("company-1");
+      queryClient.clear();
+    });
+
+    it.each(["0", "0.00", "-1", "1.005", "abc"])("rejects %s before it can create a non-enforcing policy", async (value) => {
+      agentsListMock.mockResolvedValue(agents);
+      const queryClient = await renderBudgets();
+      await act(async () => setAmount(value));
+      expect(createButton().disabled).toBe(true);
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain("greater than $0");
+      expect(upsertPolicyMock).not.toHaveBeenCalled();
+      queryClient.clear();
+    });
+
+    it("shows a safe error when the server refuses creation", async () => {
+      agentsListMock.mockResolvedValue(agents);
+      upsertPolicyMock.mockRejectedValueOnce(new Error("403 board access required: private detail"));
+      const queryClient = await renderBudgets();
+      await act(async () => setAmount("5"));
+      await act(async () => createButton().click());
+      await act(async () => { await vi.waitFor(() => expect(container.textContent).toContain("Could not create the budget policy")); });
+      expect(container.textContent).not.toContain("private detail");
+      expect(upsertPolicyMock).toHaveBeenCalledWith("company-1", expect.objectContaining({ scopeType: "company", scopeId: "company-1", amount: 500 }));
+      queryClient.clear();
+    });
+
+    it("hides the creation form once the organization and every live agent already have policies", async () => {
+      agentsListMock.mockResolvedValue(agents);
+      const policy = (scopeType: string, scopeId: string, scopeName: string) => ({
+        policyId: `${scopeType}-${scopeId}`, companyId: "company-1", scopeType, scopeId, scopeName, metric: "billed_cents", windowKind: "calendar_month_utc",
+        amount: 1, warnPercent: 80, hardStopEnabled: true, notifyEnabled: true, isActive: true, unpricedUsagePolicy: "block", reservationCents: "0.0000000",
+        observedAmount: 0, remainingAmount: 1, utilizationPercent: 0, unpricedEventCount: 0, pendingRunCount: 0, status: "ok", paused: false, pauseReason: null,
+      });
+      budgetOverviewMock.mockResolvedValue({
+        policies: [policy("company", "company-1", "AI Ecosystem"), policy("agent", agents[0]!.id, "Researcher"), policy("agent", orchestratorId, "Paperclip Orchestrator")],
+        activeIncidents: [], pendingApprovalCount: 0, pausedAgentCount: 0, pausedProjectCount: 0,
+      });
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      root = createRoot(container);
+      await act(async () => root.render(<QueryClientProvider client={queryClient}><MemoryRouter><Costs embedded initialTab="budgets" lockTab /></MemoryRouter></QueryClientProvider>));
+      await act(async () => { await vi.waitFor(() => expect(container.textContent).toContain("Paperclip Orchestrator")); });
+      await act(async () => { await vi.waitFor(() => expect(agentsListMock).toHaveBeenCalled()); });
+      expect(container.querySelector('[aria-label="Budget scope"]')).toBeNull();
+      queryClient.clear();
+    });
+  });
 });
