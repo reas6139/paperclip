@@ -22,13 +22,20 @@ export function parsePositiveUsdToCents(value: string): number | null {
   return cents;
 }
 
-/** Scopes that can receive a first monthly policy: the organization and each live agent without one. */
+/**
+ * Scopes that can receive a first monthly billed-cents policy: the organization and each live agent without one.
+ * The server keys policies by scope, metric and window, so other windows (e.g. lifetime) do not count as coverage.
+ */
 export function budgetCreationScopes(
   companyId: string,
-  policies: Pick<BudgetPolicySummary, "scopeType" | "scopeId">[],
+  policies: Pick<BudgetPolicySummary, "scopeType" | "scopeId" | "metric" | "windowKind">[],
   agents: Pick<Agent, "id" | "name" | "status">[],
 ): BudgetCreationScope[] {
-  const covered = new Set(policies.map((policy) => `${policy.scopeType}:${policy.scopeId}`));
+  const covered = new Set(
+    policies
+      .filter((policy) => policy.metric === "billed_cents" && policy.windowKind === "calendar_month_utc")
+      .map((policy) => `${policy.scopeType}:${policy.scopeId}`),
+  );
   const scopes: BudgetCreationScope[] = [];
   if (!covered.has(`company:${companyId}`)) {
     scopes.push({ key: `company:${companyId}`, scopeType: "company", scopeId: companyId, label: "Organization" });
@@ -55,12 +62,15 @@ export function BudgetPolicyCreateCard({
   const amountErrorId = useId();
   const initialKey = scopes.find((scope) => scope.key === preferredScopeKey)?.key ?? scopes[0]?.key ?? "";
   const [scopeKey, setScopeKey] = useState(initialKey);
+  const [scopeChosen, setScopeChosen] = useState(false);
   const [amount, setAmount] = useState("");
   const [blockUnpriced, setBlockUnpriced] = useState(true);
 
+  // Agents can load after the form mounts; follow the preferred scope until the operator picks one,
+  // so an agent's budgets link never silently targets the organization.
   useEffect(() => {
-    if (!scopes.some((scope) => scope.key === scopeKey)) setScopeKey(initialKey);
-  }, [initialKey, scopeKey, scopes]);
+    if (!scopeChosen || !scopes.some((scope) => scope.key === scopeKey)) setScopeKey(initialKey);
+  }, [initialKey, scopeChosen, scopeKey, scopes]);
 
   const selected = scopes.find((scope) => scope.key === scopeKey);
   const amountCents = parsePositiveUsdToCents(amount);
@@ -84,7 +94,10 @@ export function BudgetPolicyCreateCard({
             aria-label="Budget scope"
             className="block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             value={scopeKey}
-            onChange={(event) => setScopeKey(event.target.value)}
+            onChange={(event) => {
+              setScopeChosen(true);
+              setScopeKey(event.target.value);
+            }}
           >
             {scopes.map((scope) => <option key={scope.key} value={scope.key}>{scope.label}</option>)}
           </select>

@@ -412,6 +412,17 @@ describe("Shared Costs surfaces", () => {
       queryClient.clear();
     });
 
+    it("follows the agent link even when agents load after the form appears", async () => {
+      let resolveAgents!: (value: unknown) => void;
+      agentsListMock.mockReturnValue(new Promise((resolve) => { resolveAgents = resolve; }));
+      const queryClient = await renderBudgets(`/activity/budgets?agentId=${orchestratorId}`);
+      const scope = () => container.querySelector<HTMLSelectElement>('[aria-label="Budget scope"]')!;
+      expect(scope().value).toBe("company:company-1");
+      await act(async () => resolveAgents(agents));
+      await act(async () => { await vi.waitFor(() => expect(scope().value).toBe(`agent:${orchestratorId}`)); });
+      queryClient.clear();
+    });
+
     it.each(["0", "0.00", "-1", "1.005", "abc"])("rejects %s before it can create a non-enforcing policy", async (value) => {
       agentsListMock.mockResolvedValue(agents);
       const queryClient = await renderBudgets();

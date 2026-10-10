@@ -23,12 +23,19 @@ describe("budgetCreationScopes", () => {
     { id: "a3", name: "Gone", status: "terminated" as const },
   ];
 
+  const monthly = { metric: "billed_cents", windowKind: "calendar_month_utc" } as const;
+
   it("offers the organization and uncovered live agents only", () => {
-    expect(budgetCreationScopes("c1", [{ scopeType: "agent", scopeId: "a1" }], agents).map((scope) => scope.key))
+    expect(budgetCreationScopes("c1", [{ scopeType: "agent", scopeId: "a1", ...monthly }], agents).map((scope) => scope.key))
       .toEqual(["company:c1", "agent:a2"]);
   });
 
-  it("omits the organization once it has a policy", () => {
-    expect(budgetCreationScopes("c1", [{ scopeType: "company", scopeId: "c1" }], []).length).toBe(0);
+  it("omits the organization once it has a monthly policy", () => {
+    expect(budgetCreationScopes("c1", [{ scopeType: "company", scopeId: "c1", ...monthly }], []).length).toBe(0);
+  });
+
+  it("still offers a monthly policy when the scope only has a lifetime policy", () => {
+    expect(budgetCreationScopes("c1", [{ scopeType: "agent", scopeId: "a2", metric: "billed_cents", windowKind: "lifetime" }], agents)
+      .map((scope) => scope.key)).toContain("agent:a2");
   });
 });
