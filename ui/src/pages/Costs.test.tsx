@@ -412,14 +412,24 @@ describe("Shared Costs surfaces", () => {
       queryClient.clear();
     });
 
-    it("follows the agent link even when agents load after the form appears", async () => {
+    it("waits for agents before offering creation so an agent link never targets the organization", async () => {
       let resolveAgents!: (value: unknown) => void;
       agentsListMock.mockReturnValue(new Promise((resolve) => { resolveAgents = resolve; }));
-      const queryClient = await renderBudgets(`/activity/budgets?agentId=${orchestratorId}`);
-      const scope = () => container.querySelector<HTMLSelectElement>('[aria-label="Budget scope"]')!;
-      expect(scope().value).toBe("company:company-1");
-      await act(async () => resolveAgents(agents));
-      await act(async () => { await vi.waitFor(() => expect(scope().value).toBe(`agent:${orchestratorId}`)); });
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+      root = createRoot(container);
+      await act(async () => root.render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[`/activity/budgets?agentId=${orchestratorId}`]}><Costs embedded initialTab="budgets" lockTab /></MemoryRouter>
+        </QueryClientProvider>,
+      ));
+      await act(async () => { await vi.waitFor(() => expect(container.textContent).toContain("Budget control plane")); });
+      expect(container.querySelector('[aria-label="Budget scope"]')).toBeNull();
+
+      await act(async () => { resolveAgents(agents); });
+      await vi.waitFor(async () => {
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+        expect(container.querySelector<HTMLSelectElement>('[aria-label="Budget scope"]')?.value).toBe(`agent:${orchestratorId}`);
+      });
       queryClient.clear();
     });
 

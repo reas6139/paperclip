@@ -266,7 +266,7 @@ export function Costs({
     onSuccess: invalidateBudgetViews,
   });
 
-  const { data: budgetAgents } = useQuery({
+  const { data: budgetAgents, isPending: budgetAgentsPending } = useQuery({
     queryKey: queryKeys.agents.list(companyId),
     queryFn: () => agentsApi.list(companyId),
     enabled: !!selectedCompanyId && mainTab === "budgets",
@@ -1017,7 +1017,8 @@ export function Costs({
                 ) : null}
 
                 {createPolicyMutation.error && <p role="alert" className="text-sm text-destructive">Could not create the budget policy. Check that you have board access and try again.</p>}
-                {creationScopes.length > 0 ? (
+                {/* Wait for agents so an agent's budgets link never briefly targets the organization. */}
+                {!budgetAgentsPending && creationScopes.length > 0 ? (
                   <BudgetPolicyCreateCard
                     scopes={creationScopes}
                     preferredScopeKey={focusedAgentId ? `agent:${focusedAgentId}` : null}
