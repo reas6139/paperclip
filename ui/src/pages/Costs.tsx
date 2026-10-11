@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNod
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   BudgetPolicySummary,
+  BudgetPolicyUpsertInput,
   CostByAgentModel,
   CostByBiller,
   CostByProviderModel,
@@ -16,11 +17,13 @@ import type {
   ProviderQuotaResult,
 } from "@paperclipai/shared";
 import { ArrowDownLeft, ArrowUpRight, ChevronDown, ChevronRight, Coins, DollarSign, ReceiptText } from "lucide-react";
+import { agentsApi } from "../api/agents";
 import { budgetsApi } from "../api/budgets";
 import { costsApi } from "../api/costs";
 import { BillerSpendCard } from "../components/BillerSpendCard";
 import { BudgetIncidentCard } from "../components/BudgetIncidentCard";
 import { BudgetPolicyCard } from "../components/BudgetPolicyCard";
+import { BudgetPolicyCreateCard, budgetCreationScopes } from "../components/BudgetPolicyCreateCard";
 import { EmptyState } from "../components/EmptyState";
 import { FinanceBillerCard } from "../components/FinanceBillerCard";
 import { FinanceKindCard } from "../components/FinanceKindCard";
@@ -256,6 +259,17 @@ export function Costs({
       ...changes,
     }),
     onSuccess: invalidateBudgetViews,
+  });
+
+  const createPolicyMutation = useMutation({
+    mutationFn: (input: BudgetPolicyUpsertInput) => budgetsApi.upsertPolicy(companyId, input),
+    onSuccess: invalidateBudgetViews,
+  });
+
+  const { data: budgetAgents, isPending: budgetAgentsPending } = useQuery({
+    queryKey: queryKeys.agents.list(companyId),
+    queryFn: () => agentsApi.list(companyId),
+    enabled: !!selectedCompanyId && mainTab === "budgets",
   });
 
   const incidentMutation = useMutation({
@@ -572,6 +586,12 @@ export function Costs({
     agent: budgetPolicies.filter((policy) => policy.scopeType === "agent"),
     project: budgetPolicies.filter((policy) => policy.scopeType === "project"),
   }), [budgetPolicies]);
+  const creationScopes = useMemo(
+    () => budgetCreationScopes(companyId, budgetPolicies, budgetAgents ?? []),
+    [budgetAgents, budgetPolicies, companyId],
+  );
+  // Agent pages link here with ?agentId= so the first policy can be created for that agent.
+  const focusedAgentId = searchParams.get("agentId");
 
   if (!selectedCompanyId) {
     return <EmptyState icon={DollarSign} message="Select an organization to view costs." />;
@@ -991,9 +1011,20 @@ export function Costs({
                 {budgetPolicies.length === 0 ? (
                   <Card>
                     <CardContent className="px-5 py-8 text-sm text-muted-foreground">
-                      No budget policies yet. Set agent and project budgets from their detail pages, or use the existing organization monthly budget control.
+                      No budget policies yet. Create an organization or agent policy below; project budgets are set from project pages.
                     </CardContent>
                   </Card>
+                ) : null}
+
+                {createPolicyMutation.error && <p role="alert" className="text-sm text-destructive">Could not create the budget policy. Check that you have board access and try again.</p>}
+                {/* Wait for agents so an agent's budgets link never briefly targets the organization. */}
+                {!budgetAgentsPending && creationScopes.length > 0 ? (
+                  <BudgetPolicyCreateCard
+                    scopes={creationScopes}
+                    preferredScopeKey={focusedAgentId ? `agent:${focusedAgentId}` : null}
+                    isSaving={createPolicyMutation.isPending}
+                    onCreate={(input) => createPolicyMutation.mutate(input)}
+                  />
                 ) : null}
               </div>
             </>
