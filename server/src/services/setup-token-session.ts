@@ -305,6 +305,22 @@ export interface SetupTokenCleanupStore {
   ): Promise<SetupTokenCleanupRecord | null>;
 }
 
+/** A short, value-free description of a reaper failure: step, error name, and the underlying cause's name and database codes. */
+function describeReaperFailure(step: string, err: unknown): string {
+  if (!(err instanceof Error)) return `step ${step}, unknown error`;
+  const parts = [`step ${step}`, err.name];
+  const cause = (err as { cause?: unknown }).cause;
+  if (cause && typeof cause === "object") {
+    const c = cause as Record<string, unknown>;
+    if (typeof c.name === "string") parts.push(`cause ${c.name}`);
+    for (const key of ["code", "routine", "table", "column", "constraint", "severity"]) {
+      const v = c[key];
+      if (typeof v === "string" || typeof v === "number") parts.push(`${key} ${String(v).replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 60)}`);
+    }
+  }
+  return parts.join(", ").slice(0, 240);
+}
+
 /** The counts one reaper sweep produced over the durable cleanup store. */
 export interface SetupTokenReapResult {
   /** The reapable records whose lease released and whose row cleared. */
@@ -334,8 +350,10 @@ export async function reapSetupTokenLeases(
   let released = 0;
   let failed = 0;
   for (const record of records) {
+    let step = "release_lease";
     try {
       await deps.leases.releaseById(record.leaseId);
+      step = "remove_record";
       await deps.store.remove({
         sessionId: record.sessionId,
         companyId: record.companyId,
@@ -345,9 +363,9 @@ export async function reapSetupTokenLeases(
       released += 1;
     } catch (err) {
       failed += 1;
-      // Say why (error name and a short message only, never a value from the record), so a release that fails every sweep is diagnosable.
-      const why = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 160) : "unknown error";
-      log(`[paperclip] Setup-token reaper: a lease release failed (${why}); it stays retryable.`);
+      // Say why so a release that fails every sweep is diagnosable: the step, the error name, and the underlying
+      // database error's name and standard code and object names. Never a value from the record, no query text, no parameters.
+      log(`[paperclip] Setup-token reaper: a lease release failed (${describeReaperFailure(step, err)}); it stays retryable.`);
     }
   }
   return { released, failed };
