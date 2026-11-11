@@ -104,6 +104,8 @@ import {
   createProductionLoginSessionReaperRuntime,
 } from "./services/device-login-reaper.js";
 import { createProductionSetupTokenReaper } from "./services/setup-token-reaper.js";
+import { startSiteWatcher } from "./services/site-watcher.js";
+import { resolvePaperclipHomeDir as resolveSiteWatchHomeDir } from "./home-paths.js";
 import { localAiLoginService } from "./services/local-ai-login.js";
 import { resolveWorktreeRunExecutionActivationState } from "./services/instance-settings.js";
 import {
@@ -1206,6 +1208,9 @@ async function startServerWithDatabaseTeardown(
   const executionControlInterval = setInterval(sweepExecutionControl, EXECUTION_RECONCILIATION_INTERVAL_MS);
   executionControlInterval.unref?.();
   sweepExecutionControl();
+  // First real job built into Paperclip (Never dark, 11 Nov 2026): every 10 minutes read the site health page and keep the history of
+  // every stall in the log and in site-watch.json on this service's volume. No key, no login. SITE_WATCH_DISABLED=1 switches it off.
+  startSiteWatcher({ homeDir: resolveSiteWatchHomeDir(), log: (line) => logger.info(line) });
   const startHeartbeatSchedulerInterval = (callback: () => void) => {
     heartbeatSchedulerInterval = setInterval(() => {
       if (!isWarmStandby() && !isIdleTaskDrainActive()) callback();

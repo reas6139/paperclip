@@ -343,9 +343,11 @@ export async function reapSetupTokenLeases(
         adapterType: record.adapterType,
       });
       released += 1;
-    } catch {
+    } catch (err) {
       failed += 1;
-      log("[paperclip] Setup-token reaper: a lease release failed; it stays retryable.");
+      // Say why (error name and a short message only, never a value from the record), so a release that fails every sweep is diagnosable.
+      const why = err instanceof Error ? `${err.name}: ${err.message}`.slice(0, 160) : "unknown error";
+      log(`[paperclip] Setup-token reaper: a lease release failed (${why}); it stays retryable.`);
     }
   }
   return { released, failed };
