@@ -34,7 +34,10 @@ export interface SetupTokenReaperDeps {
   leases: Pick<SetupTokenLeaseManager, "releaseById">;
   now?: () => number;
   log?: (line: string) => void;
+  canRelease?: (leaseId: string) => boolean;
 }
+
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Builds the standalone setup-token reaper. One sweep reaps every reapable
@@ -44,7 +47,7 @@ export interface SetupTokenReaperDeps {
 export function createSetupTokenReaper(deps: SetupTokenReaperDeps) {
   const now = deps.now ?? Date.now;
   async function sweep(): Promise<SetupTokenReapResult> {
-    return reapSetupTokenLeases({ store: deps.store, leases: deps.leases, log: deps.log }, now());
+    return reapSetupTokenLeases({ store: deps.store, leases: deps.leases, log: deps.log, canRelease: deps.canRelease }, now());
   }
   return { sweep };
 }
@@ -82,6 +85,7 @@ export function createProductionSetupTokenReaper(
   return createSetupTokenReaper({
     store,
     leases: { releaseById: (leaseId) => sandbox.release(leaseId) },
+    canRelease: (leaseId) => UUID_SHAPE.test(leaseId),
     log: deps.log,
   });
 }

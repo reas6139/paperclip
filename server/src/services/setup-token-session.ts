@@ -305,6 +305,9 @@ export interface SetupTokenCleanupStore {
   ): Promise<SetupTokenCleanupRecord | null>;
 }
 
+// shortcut: remembered per process only, so a restart logs the set-aside line once more; upgrade if a persisted marker is wanted.
+const setAsideRecords = new Set<string>();
+
 /** A short, value-free description of a reaper failure: step, error name, and the underlying cause's name and database codes. */
 function describeReaperFailure(step: string, err: unknown): string {
   if (!(err instanceof Error)) return `step ${step}, unknown error`;
@@ -342,6 +345,8 @@ export async function reapSetupTokenLeases(
     store: Pick<SetupTokenCleanupStore, "listReapable" | "remove">;
     leases: Pick<SetupTokenLeaseManager, "releaseById">;
     log?: (line: string) => void;
+    /** A lease id this returns false for can never be released; the record is set aside, not deleted. Default: every id may be released. */
+    canRelease?: (leaseId: string) => boolean;
   },
   now: number,
 ): Promise<SetupTokenReapResult> {
@@ -350,6 +355,15 @@ export async function reapSetupTokenLeases(
   let released = 0;
   let failed = 0;
   for (const record of records) {
+    // An id that can never be released fails on every sweep (Postgres 22P02 for a non-UUID lease id).
+    // Set the record aside for this process (the row stays in the database, nothing is deleted) and say so once.
+    if (deps.canRelease && !deps.canRelease(record.leaseId)) {
+      if (!setAsideRecords.has(record.sessionId)) {
+        setAsideRecords.add(record.sessionId);
+        log("[paperclip] Setup-token reaper: a record whose lease id cannot be released was set aside (kept, not deleted).");
+      }
+      continue;
+    }
     let step = "release_lease";
     try {
       await deps.leases.releaseById(record.leaseId);

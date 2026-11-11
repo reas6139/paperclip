@@ -78,6 +78,22 @@ describe("setup-token reaper", () => {
     expect(store.rows.size).toBe(0);
   });
 
+  it("sets aside a record whose lease id cannot be released: no release, no failure, the row is kept, logged once", async () => {
+    const store = createMemoryStore();
+    store.seed({ sessionId: "bad-1", leaseId: "not-a-uuid", state: "failed" });
+    const leases = createFakeLeases();
+    const lines: string[] = [];
+    const reaper = createSetupTokenReaper({ store, leases, now: () => NOW, log: (l) => lines.push(l), canRelease: () => false });
+
+    const first = await reaper.sweep();
+    await reaper.sweep();
+
+    expect(first).toEqual({ released: 0, failed: 0 });
+    expect(leases.releaseByIdCalls).toHaveLength(0);
+    expect(store.rows.has("bad-1")).toBe(true);
+    expect(lines.filter((l) => l.includes("set aside"))).toHaveLength(1);
+  });
+
   it("holds a live, unexpired, unconsumed record and never releases its lease", async () => {
     const store = createMemoryStore();
     store.seed({
